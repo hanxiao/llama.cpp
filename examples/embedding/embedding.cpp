@@ -96,7 +96,7 @@ int main(int argc, char ** argv) {
     }
 
     // For non-causal models, batch size must be equal to ubatch size
-    params.n_ubatch = params.n_batch;
+    // params.n_ubatch = params.n_batch;
 
     llama_backend_init();
     llama_numa_init(params.numa);
@@ -137,6 +137,7 @@ int main(int argc, char ** argv) {
 
     // split the prompt into lines
     std::vector<std::string> prompts = split_lines(params.prompt, params.embd_sep);
+
 
     // max batch size
     const uint64_t n_batch = params.n_batch;
@@ -179,12 +180,15 @@ int main(int argc, char ** argv) {
         inputs.push_back(inp);
     }
 
-    // check if the last token is SEP/EOS
+    // check if the last token is SEP/EOS, this seems unnecessary for mean pooling based embedding
     // it should be automatically added by the tokenizer when 'tokenizer.ggml.add_eos_token' is set to 'true'
-    for (auto & inp : inputs) {
-        if (inp.empty() || (inp.back() != llama_vocab_sep(vocab) && inp.back() != llama_vocab_eos(vocab))) {
-            LOG_WRN("%s: last token in the prompt is not SEP or EOS\n", __func__);
-            LOG_WRN("%s: 'tokenizer.ggml.add_eos_token' should be set to 'true' in the GGUF header\n", __func__);
+    // only check for pooling types that typically require EOS/SEP tokens (not mean pooling)
+    if (pooling_type != LLAMA_POOLING_TYPE_MEAN) {
+        for (auto & inp : inputs) {
+            if (inp.empty() || (inp.back() != llama_vocab_sep(vocab) && inp.back() != llama_vocab_eos(vocab))) {
+                LOG_WRN("%s: last token in the prompt is not SEP or EOS\n", __func__);
+                LOG_WRN("%s: 'tokenizer.ggml.add_eos_token' should be set to 'true' in the GGUF header\n", __func__);
+            }
         }
     }
 
@@ -213,6 +217,7 @@ int main(int argc, char ** argv) {
     } else {
         n_embd_count = n_prompts;
     }
+    LOG_INF("%s: number of embeddings = %d\n", __func__, n_embd_count);
 
     // allocate output
     const int n_embd = llama_model_n_embd(model);
@@ -236,6 +241,7 @@ int main(int argc, char ** argv) {
             s = 0;
             common_batch_clear(batch);
         }
+
 
         // add to batch
         batch_add_seq(batch, inp, s);
