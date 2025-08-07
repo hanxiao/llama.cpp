@@ -1,3 +1,4 @@
+#include "../src/llama-cparams.h"
 #include "arg.h"
 #include "common.h"
 #include "llama.h"
@@ -33,19 +34,14 @@ static void batch_add_seq(llama_batch & batch, const std::vector<int32_t> & toke
     }
 }
 
-static void batch_decode(llama_context * ctx,
-                         llama_batch &   batch,
-                         float *         output,
-                         int             n_seq,
-                         int             n_embd,
-                         int             embd_norm) {
+static void batch_decode(llama_context * ctx, llama_batch & batch, float * output, int n_embd, int embd_norm) {
     const enum llama_pooling_type pooling_type = llama_pooling_type(ctx);
 
     // clear previous kv_cache values (irrelevant for embeddings)
     llama_memory_clear(llama_get_memory(ctx), true);
 
     // run model
-    LOG_INF("%s: n_tokens = %d, n_seq = %d\n", __func__, batch.n_tokens, n_seq);
+    // LOG_INF("%s: n_tokens = %d, n_seq = %d\n", __func__, batch.n_tokens, n_seq);
     if (llama_decode(ctx, batch) < 0) {
         LOG_ERR("%s : failed to process\n", __func__);
     }
@@ -249,13 +245,19 @@ int main(int argc, char ** argv) {
         auto & inp = inputs[k];
 
         const uint64_t n_toks = inp.size();
-        // show k/prompts and batch.n_tokens and n_embd
-        LOG_INF("%s: k = %d/%d, batch.n_tokens = %d, n_embd = %d\n", __func__, k, n_prompts, batch.n_tokens, n_embd);
 
         // encode if at capacity
         if (batch.n_tokens + n_toks > n_batch) {
             float * out = emb + e * n_embd;
-            batch_decode(ctx, batch, out, s, n_embd, params.embd_normalize);
+            LOG_INF("%s: k = %d/%d, batch [n_seq/max = %d/%d, n_tokens/ctx = %d/%d]\n",
+                    __func__,
+                    k,
+                    n_prompts,
+                    s,
+                    LLAMA_MAX_SEQ,
+                    batch.n_tokens,
+                    n_ctx);
+            batch_decode(ctx, batch, out, n_embd, params.embd_normalize);
             e += pooling_type == LLAMA_POOLING_TYPE_NONE ? batch.n_tokens : s;
             s = 0;
             common_batch_clear(batch);
@@ -268,7 +270,7 @@ int main(int argc, char ** argv) {
 
     // final batch
     float * out = emb + e * n_embd;
-    batch_decode(ctx, batch, out, s, n_embd, params.embd_normalize);
+    batch_decode(ctx, batch, out, n_embd, params.embd_normalize);
 
     if (params.embd_out.empty()) {
         LOG("\n");

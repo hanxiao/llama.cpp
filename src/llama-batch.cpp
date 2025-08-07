@@ -31,7 +31,7 @@ bool llama_batch_allocr::init(const llama_batch &    batch_inp,
     clear();
 
     // show n_seq_max
-    LLAMA_LOG_INFO("%s: DD n_seq_max = %d\n", __func__, n_seq_max);
+    // LLAMA_LOG_INFO("%s: DD n_seq_max = %d\n", __func__, n_seq_max);
 
     batch = batch_inp;
 
@@ -49,7 +49,7 @@ bool llama_batch_allocr::init(const llama_batch &    batch_inp,
     }
 
     if (batch.token) {
-        LLAMA_LOG_INFO("%s: HIHI batch.n_tokens = %d\n", __func__, batch.n_tokens);
+        // LLAMA_LOG_INFO("%s: HIHI batch.n_tokens = %d\n", __func__, batch.n_tokens);
         for (int32_t i = 0; i < batch.n_tokens; ++i) {
             if (batch.token[i] < 0 || (uint32_t) batch.token[i] >= vocab.n_tokens()) {
                 LLAMA_LOG_ERROR("%s: invalid token[%d] = %d\n", __func__, i, batch.token[i]);
