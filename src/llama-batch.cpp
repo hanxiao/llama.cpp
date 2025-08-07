@@ -62,7 +62,7 @@ bool llama_batch_allocr::init(const llama_batch &    batch_inp,
         for (int32_t i = 0; i < batch.n_tokens; ++i) {
             for (int32_t s = 0; s < batch.n_seq_id[i]; ++s) {
                 // @Han show batch.seq_id[i][s] and n_seq_max
-                LLAMA_LOG_INFO("%s: batch.seq_id[%d][%d] = %d, n_seq_max = %d\n", __func__, i, s, batch.seq_id[i][s], n_seq_max);
+                // LLAMA_LOG_INFO("%s: batch.seq_id[%d][%d] = %d, n_seq_max = %d\n", __func__, i, s, batch.seq_id[i][s], n_seq_max);
                 if (batch.seq_id && (batch.seq_id[i][s] < 0 || batch.seq_id[i][s] >= (llama_seq_id) n_seq_max)) {
                     // @Han show batch.seq_id[i][s] and n_seq_max
                     LLAMA_LOG_ERROR("%s: invalid seq_id[%d][%d] = %d >= %d\n",

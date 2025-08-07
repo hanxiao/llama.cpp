@@ -962,7 +962,7 @@ struct common_init_result common_init_from_params(common_params & params) {
     auto cparams = common_context_params_to_llama(params);
 
     // @Han show cparams.n_seq_max and kv_unified
-    LOG_INF("%s: cparams.n_seq_max = %d, kv_unified = %d\n", __func__, cparams.n_seq_max, cparams.kv_unified);
+    // LOG_INF("%s: cparams.n_seq_max = %d, kv_unified = %d\n", __func__, cparams.n_seq_max, cparams.kv_unified);
 
     llama_context * lctx = llama_init_from_model(model, cparams);
     if (lctx == NULL) {
