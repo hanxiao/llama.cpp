@@ -30,6 +30,9 @@ bool llama_batch_allocr::init(const llama_batch &    batch_inp,
                               bool                   output_all) {
     clear();
 
+    // show n_seq_max
+    LLAMA_LOG_INFO("%s: DD n_seq_max = %d\n", __func__, n_seq_max);
+
     batch = batch_inp;
 
     this->vocab = &vocab;
@@ -46,6 +49,7 @@ bool llama_batch_allocr::init(const llama_batch &    batch_inp,
     }
 
     if (batch.token) {
+        LLAMA_LOG_INFO("%s: HIHI batch.n_tokens = %d\n", __func__, batch.n_tokens);
         for (int32_t i = 0; i < batch.n_tokens; ++i) {
             if (batch.token[i] < 0 || (uint32_t) batch.token[i] >= vocab.n_tokens()) {
                 LLAMA_LOG_ERROR("%s: invalid token[%d] = %d\n", __func__, i, batch.token[i]);
@@ -57,7 +61,10 @@ bool llama_batch_allocr::init(const llama_batch &    batch_inp,
     if (batch.seq_id) {
         for (int32_t i = 0; i < batch.n_tokens; ++i) {
             for (int32_t s = 0; s < batch.n_seq_id[i]; ++s) {
+                // @Han show batch.seq_id[i][s] and n_seq_max
+                LLAMA_LOG_INFO("%s: batch.seq_id[%d][%d] = %d, n_seq_max = %d\n", __func__, i, s, batch.seq_id[i][s], n_seq_max);
                 if (batch.seq_id && (batch.seq_id[i][s] < 0 || batch.seq_id[i][s] >= (llama_seq_id) n_seq_max)) {
+                    // @Han show batch.seq_id[i][s] and n_seq_max
                     LLAMA_LOG_ERROR("%s: invalid seq_id[%d][%d] = %d >= %d\n",
                                     __func__,
                                     i,

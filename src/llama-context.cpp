@@ -998,6 +998,8 @@ int llama_context::decode(const llama_batch & batch_inp) {
     // when computing embeddings, all tokens are output
     const bool output_all = cparams.embeddings;
 
+    // @Han show n_seq_max and LLAMA_MAX_SEQ
+    LLAMA_LOG_INFO("%s: n_seq_max = %d, LLAMA_MAX_SEQ = %d\n", __func__, cparams.n_seq_max, LLAMA_MAX_SEQ);
     if (!balloc->init(batch_inp,
                       vocab,
                       memory.get(),

@@ -1,27 +1,27 @@
 #include "arg.h"
 #include "common.h"
-#include "log.h"
 #include "llama.h"
+#include "log.h"
 
-#include <ctime>
 #include <algorithm>
+#include <ctime>
 
 #if defined(_MSC_VER)
-#pragma warning(disable: 4244 4267) // possible loss of data
+#    pragma warning(disable : 4244 4267)  // possible loss of data
 #endif
 
 static std::vector<std::string> split_lines(const std::string & s, const std::string & separator = "\n") {
     std::vector<std::string> lines;
-    size_t start = 0;
-    size_t end = s.find(separator);
+    size_t                   start = 0;
+    size_t                   end   = s.find(separator);
 
     while (end != std::string::npos) {
         lines.push_back(s.substr(start, end - start));
         start = end + separator.length();
-        end = s.find(separator, start);
+        end   = s.find(separator, start);
     }
 
-    lines.push_back(s.substr(start)); // Add the last part
+    lines.push_back(s.substr(start));  // Add the last part
 
     return lines;
 }
@@ -33,7 +33,12 @@ static void batch_add_seq(llama_batch & batch, const std::vector<int32_t> & toke
     }
 }
 
-static void batch_decode(llama_context * ctx, llama_batch & batch, float * output, int n_seq, int n_embd, int embd_norm) {
+static void batch_decode(llama_context * ctx,
+                         llama_batch &   batch,
+                         float *         output,
+                         int             n_seq,
+                         int             n_embd,
+                         int             embd_norm) {
     const enum llama_pooling_type pooling_type = llama_pooling_type(ctx);
 
     // clear previous kv_cache values (irrelevant for embeddings)
@@ -50,17 +55,17 @@ static void batch_decode(llama_context * ctx, llama_batch & batch, float * outpu
             continue;
         }
 
-        const float * embd = nullptr;
-        int embd_pos = 0;
+        const float * embd     = nullptr;
+        int           embd_pos = 0;
 
         if (pooling_type == LLAMA_POOLING_TYPE_NONE) {
             // try to get token embeddings
-            embd = llama_get_embeddings_ith(ctx, i);
+            embd     = llama_get_embeddings_ith(ctx, i);
             embd_pos = i;
             GGML_ASSERT(embd != NULL && "failed to get token embeddings");
         } else {
             // try to get sequence embeddings - supported only when pooling_type is not NONE
-            embd = llama_get_embeddings_seq(ctx, batch.seq_id[i][0]);
+            embd     = llama_get_embeddings_seq(ctx, batch.seq_id[i][0]);
             embd_pos = batch.seq_id[i][0];
             GGML_ASSERT(embd != NULL && "failed to get sequence embeddings");
         }
@@ -79,15 +84,17 @@ int main(int argc, char ** argv) {
 
     common_init();
 
-    params.embedding = true;
+    params.embedding  = true;
+    // somehow kv_unified change from time to time?
+    params.kv_unified = true;
 
     // if the number of prompts that would be encoded is known in advance, it's more efficient to specify the
     //   --parallel argument accordingly. for convenience, if not specified, we fallback to unified KV cache
     //   in order to support any number of prompts
-    if (params.n_parallel == 1) {
-        LOG_INF("%s: n_parallel == 1 -> unified KV cache is enabled\n", __func__);
-        params.kv_unified = true;
-    }
+    // if (params.n_parallel == 1) {
+    //     LOG_INF("%s: n_parallel == 1 -> unified KV cache is enabled\n", __func__);
+    //     params.kv_unified = true;
+    // }
 
     // utilize the full context
     if (params.n_batch < params.n_ctx) {
@@ -102,10 +109,11 @@ int main(int argc, char ** argv) {
     llama_numa_init(params.numa);
 
     // load the model
+
     common_init_result llama_init = common_init_from_params(params);
 
-    llama_model * model = llama_init.model.get();
-    llama_context * ctx = llama_init.context.get();
+    llama_model *   model = llama_init.model.get();
+    llama_context * ctx   = llama_init.context.get();
 
     if (model == NULL) {
         LOG_ERR("%s: unable to load model\n", __func__);
@@ -125,8 +133,8 @@ int main(int argc, char ** argv) {
     }
 
     if (n_ctx > n_ctx_train) {
-        LOG_WRN("%s: warning: model was trained on only %d context tokens (%d specified)\n",
-                __func__, n_ctx_train, n_ctx);
+        LOG_WRN(
+            "%s: warning: model was trained on only %d context tokens (%d specified)\n", __func__, n_ctx_train, n_ctx);
     }
 
     // print system information
@@ -138,13 +146,14 @@ int main(int argc, char ** argv) {
     // split the prompt into lines
     std::vector<std::string> prompts = split_lines(params.prompt, params.embd_sep);
 
-
     // max batch size
     const uint64_t n_batch = params.n_batch;
 
     // get added sep and eos token, if any
-    const std::string added_sep_token = llama_vocab_get_add_sep(vocab) ? llama_vocab_get_text(vocab, llama_vocab_sep(vocab)) : "";
-    const std::string added_eos_token = llama_vocab_get_add_eos(vocab) ? llama_vocab_get_text(vocab, llama_vocab_eos(vocab)) : "";
+    const std::string added_sep_token =
+        llama_vocab_get_add_sep(vocab) ? llama_vocab_get_text(vocab, llama_vocab_sep(vocab)) : "";
+    const std::string added_eos_token =
+        llama_vocab_get_add_eos(vocab) ? llama_vocab_get_text(vocab, llama_vocab_eos(vocab)) : "";
 
     // tokenize the prompts and trim
     std::vector<std::vector<int32_t>> inputs;
@@ -154,7 +163,7 @@ int main(int argc, char ** argv) {
         // split classification pairs and insert expected separator tokens
         if (pooling_type == LLAMA_POOLING_TYPE_RANK && prompt.find(params.cls_sep) != std::string::npos) {
             std::vector<std::string> pairs = split_lines(prompt, params.cls_sep);
-            std::string final_prompt;
+            std::string              final_prompt;
 
             for (size_t i = 0; i < pairs.size(); i++) {
                 final_prompt += pairs[i];
@@ -173,8 +182,11 @@ int main(int argc, char ** argv) {
             inp = common_tokenize(ctx, prompt, true, true);
         }
         if (inp.size() > n_batch) {
-            LOG_ERR("%s: number of tokens in input line (%lld) exceeds batch size (%lld), increase batch size and re-run\n",
-                    __func__, (long long int) inp.size(), (long long int) n_batch);
+            LOG_ERR(
+                "%s: number of tokens in input line (%lld) exceeds batch size (%lld), increase batch size and re-run\n",
+                __func__,
+                (long long int) inp.size(),
+                (long long int) n_batch);
             return 1;
         }
         inputs.push_back(inp);
@@ -202,11 +214,16 @@ int main(int argc, char ** argv) {
             }
             LOG("\n\n");
         }
+        // show number of prompts
+        LOG_INF("%s: number of prompts = %ld\n", __func__, prompts.size());
     }
 
     // initialize batch
-    const int n_prompts = prompts.size();
-    struct llama_batch batch = llama_batch_init(n_batch, 0, 1);
+    const int          n_prompts = prompts.size();
+    // will reuse this batch again and again
+    struct llama_batch batch     = llama_batch_init(n_batch, 0, 1);
+    // show n_tokens in batch
+    LOG_INF("%s: n_tokens in batch = %d\n", __func__, batch.n_tokens);
 
     // count number of embeddings
     int n_embd_count = 0;
@@ -220,18 +237,20 @@ int main(int argc, char ** argv) {
     LOG_INF("%s: number of embeddings = %d\n", __func__, n_embd_count);
 
     // allocate output
-    const int n_embd = llama_model_n_embd(model);
+    const int          n_embd = llama_model_n_embd(model);
     std::vector<float> embeddings(n_embd_count * n_embd, 0);
-    float * emb = embeddings.data();
+    float *            emb = embeddings.data();
 
     // break into batches
-    int e = 0; // number of embeddings already stored
-    int s = 0; // number of prompts in current batch
+    int e = 0;  // number of embeddings already stored
+    int s = 0;  // number of prompts in current batch
     for (int k = 0; k < n_prompts; k++) {
         // clamp to n_batch tokens
         auto & inp = inputs[k];
 
         const uint64_t n_toks = inp.size();
+        // show k/prompts and batch.n_tokens and n_embd
+        LOG_INF("%s: k = %d/%d, batch.n_tokens = %d, n_embd = %d\n", __func__, k, n_prompts, batch.n_tokens, n_embd);
 
         // encode if at capacity
         if (batch.n_tokens + n_toks > n_batch) {
@@ -241,7 +260,6 @@ int main(int argc, char ** argv) {
             s = 0;
             common_batch_clear(batch);
         }
-
 
         // add to batch
         batch_add_seq(batch, inp, s);
@@ -276,11 +294,11 @@ int main(int argc, char ** argv) {
                 LOG("\n");
             }
         } else if (pooling_type == LLAMA_POOLING_TYPE_RANK) {
-            const uint32_t n_cls_out = llama_model_n_cls_out(model);
+            const uint32_t           n_cls_out = llama_model_n_cls_out(model);
             std::vector<std::string> cls_out_labels;
 
             for (uint32_t i = 0; i < n_cls_out; i++) {
-                const char * label = llama_model_cls_label(model, i);
+                const char *      label = llama_model_cls_label(model, i);
                 const std::string label_i(label == nullptr ? "" : label);
                 cls_out_labels.emplace_back(label_i.empty() ? std::to_string(i) : label_i);
             }
@@ -333,38 +351,58 @@ int main(int argc, char ** argv) {
         const bool notArray = params.embd_out != "array";
 
         LOG(notArray ? "{\n  \"object\": \"list\",\n  \"data\": [\n" : "[");
-        for (int j = 0;;) { // at least one iteration (one prompt)
-            if (notArray) LOG("    {\n      \"object\": \"embedding\",\n      \"index\": %d,\n      \"embedding\": ",j);
+        for (int j = 0;;) {  // at least one iteration (one prompt)
+            if (notArray) {
+                LOG("    {\n      \"object\": \"embedding\",\n      \"index\": %d,\n      \"embedding\": ", j);
+            }
             LOG("[");
-            for (int i = 0;;) { // at least one iteration (n_embd > 0)
+            for (int i = 0;;) {  // at least one iteration (n_embd > 0)
                 LOG(params.embd_normalize == 0 ? "%1.0f" : "%1.7f", emb[j * n_embd + i]);
                 i++;
-                if (i < n_embd) LOG(","); else break;
+                if (i < n_embd) {
+                    LOG(",");
+                } else {
+                    break;
+                }
             }
             LOG(notArray ? "]\n    }" : "]");
             j++;
-            if (j < n_embd_count) LOG(notArray ? ",\n" : ","); else break;
+            if (j < n_embd_count) {
+                LOG(notArray ? ",\n" : ",");
+            } else {
+                break;
+            }
         }
         LOG(notArray ? "\n  ]" : "]\n");
 
         if (params.embd_out == "json+" && n_prompts > 1) {
             LOG(",\n  \"cosineSimilarity\": [\n");
-            for (int i = 0;;) { // at least two iteration (n_embd_count > 1)
+            for (int i = 0;;) {      // at least two iteration (n_embd_count > 1)
                 LOG("    [");
-                for (int j = 0;;) { // at least two iteration (n_embd_count > 1)
+                for (int j = 0;;) {  // at least two iteration (n_embd_count > 1)
                     float sim = common_embd_similarity_cos(emb + i * n_embd, emb + j * n_embd, n_embd);
                     LOG("%6.2f", sim);
                     j++;
-                    if (j < n_embd_count) LOG(", "); else break;
+                    if (j < n_embd_count) {
+                        LOG(", ");
+                    } else {
+                        break;
+                    }
                 }
                 LOG(" ]");
                 i++;
-                if (i < n_embd_count) LOG(",\n"); else break;
+                if (i < n_embd_count) {
+                    LOG(",\n");
+                } else {
+                    break;
+                }
             }
             LOG("\n  ]");
         }
 
-        if (notArray) LOG("\n}\n");
+        if (notArray) {
+            LOG("\n}\n");
+        }
     }
 
     LOG("\n");
