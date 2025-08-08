@@ -92,7 +92,6 @@ int main(int argc, char ** argv) {
     //     params.kv_unified = true;
     // }
 
-    
     // if (params.n_batch < params.n_ctx) {
     //     LOG_WRN("%s: setting batch size to %d\n", __func__, params.n_ctx);
     //     params.n_batch = params.n_ctx;
