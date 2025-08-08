@@ -92,13 +92,17 @@ int main(int argc, char ** argv) {
     //     params.kv_unified = true;
     // }
 
-    // utilize the full context
-    if (params.n_batch < params.n_ctx) {
-        LOG_WRN("%s: setting batch size to %d\n", __func__, params.n_ctx);
-        params.n_batch = params.n_ctx;
-    }
+    
+    // if (params.n_batch < params.n_ctx) {
+    //     LOG_WRN("%s: setting batch size to %d\n", __func__, params.n_ctx);
+    //     params.n_batch = params.n_ctx;
+    // }
+
+    // always utilize the full context
+    params.n_batch = params.n_ctx;
 
     // For non-causal models, batch size must be equal to ubatch size
+    // but jina-embeddings v4 is a causal model, so we can use ubatch
     // params.n_ubatch = params.n_batch;
 
     llama_backend_init();
@@ -245,6 +249,8 @@ int main(int argc, char ** argv) {
         auto & inp = inputs[k];
 
         const uint64_t n_toks = inp.size();
+        // show n_toks, batch.n_tokens, n_batch
+        // LOG_INF("%s: n_toks = %d, batch.n_tokens = %d, n_batch = %d\n", __func__, n_toks, batch.n_tokens, n_batch);
 
         // encode if at capacity
         if (batch.n_tokens + n_toks > n_batch) {
